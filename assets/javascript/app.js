@@ -1,93 +1,63 @@
-$(document).ready(function () {
+var config = {
+    apiKey: "AIzaSyB1LEMNMhG8d8lDUo9U_84nBiMHhVBEzNo",
+    authDomain: "train-scheduler-2-e0406.firebaseapp.com",
+    databaseURL: "https://train-scheduler-2-e0406.firebaseio.com",
+    projectId: "train-scheduler-2-e0406",
+    storageBucket: "train-scheduler-2-e0406.appspot.com",
+    messagingSenderId: "985911997534",
+    appId: "1:985911997534:web:af541869a893ee5d"
+};
+// Initialize Firebase
+firebase.initializeApp(config);
 
-    var firebaseConfig = {
-        apiKey: "AIzaSyAyublQNXrEqmgjaHeGpTAtlP5VTQSgvF8",
-        authDomain: "train-scheduler-8cc7b.firebaseapp.com",
-        databaseURL: "https://train-scheduler-8cc7b.firebaseio.com",
-        projectId: "train-scheduler-8cc7b",
-        storageBucket: "train-scheduler-8cc7b.appspot.com",
-        messagingSenderId: "493256106022",
-        appId: "1:493256106022:web:05283fd69da3d366"
+// Reference database
+var database = firebase.database();
+
+$("#new-train").submit(function (event) {
+    var trainName = $("#train-input").val();
+    var destination = $("#destination-input").val();
+    var startTime = $("#time-input").val();
+    var frequency = $("#frequency-input").val();
+    var trainSubmit = {
+        name: trainName,
+        destination: destination,
+        start: startTime,
+        frequency: frequency,
     };
 
-    // Initialize Firebase
-    firebaseConfig.initializeApp(firebaseConfig);
+    database.ref().push(trainSubmit);
 
-    // Reference database
-    var database = firebase.database();
+    alert("You've successfully added a train to " + destination);
 
-    // Store inputs into variables
-    var name = "";
-    var destination = "";
-    var time = "";
-    var frequencey = 0;
-    var timeFormat = "HH:mm"
+    $("#train-input").val();
+    $("#destination-input").val();
+    $("#time-input").val();
+    $("#frequency-input").val();
 
-    $("#addTrain").on("click", function (event) {
-        name = $("#name").val().trim();
-        destination = $("#destination").val().trim();
-        time = $("#time").val().trim();
-        frequency = $("frequency").val().trim();
+    return false;
+})
 
-        time = moment(time, timeFormat).format(timeFormat);
+// Firebase event for adding the train information to the database and to the page
+database.ref().on("child_added", function (childSnapshot, prevChildKey) {
 
-        // push data to db
-        database.ref().push({
-            name: name,
-            destination: destination,
-            time: time,
-            frequency: frequency,
-            dateAdded: firebase.database.ServerValue.TIMESTAMP
-        });
+    // Storing user info into a variable
+    var trainName = childSnapshot.val().name;
+    var destination = childSnapshot.val().destination;
+    var startTime = childSnapshot.val().start;
+    var frequency = childSnapshot.val().frequency;
 
-    });
+    // Variables to generate real time data onto the page
+    var convertedTime = moment(startTime, "HH:mm").subtract(1, "years");
+    var currentTime = moment();
+    var timeDiff = currentTime.diff(moment(convertedTime), "minutes");
+    var remainingTime = timeDiff % frequency;
+    var minutesTillTrain = frequency - remainingTime;
+    var upcomingTrain = moment().add(remainingTime, "minutes");
+    var formatTime = moment(upcomingTrain).format("HH:mm");
 
-    database.ref().on("child_added", function (snapshot) {
-        var sv = snapshot.val();
-
-        // Variables for calculated display values
-        var nextArrival = moment();
-        var minutesAway = 0;
-
-        // Determine minutes away and arrival time
-        var firstTimeConverted = moment(sv.time, "HH:mm").subtract(1, "years");
-        var diffTime = moment().diff(moment(firstTimeConverted), "minutes");
-        
-        var remainder = diffTime % sv.frequency;
-
-        minutesAway = sv.frequency - remainder;
-
-        nextArrival = moment().add(minutesAway, "minutes");
-        nextArrival = moment(nextArrival).format(timeFormat);
-
-        // Populate HTML
-        var row = $("<tr>");
-        var rowHeader = $("<th scope='row'>");
-        row.append(rowHeader);
-
-        rowHeader.text(sv.name);
-
-        var col1 = $("<td id='displayDestination'>");
-        var col2 = $("<td id='displayFrequencyrequency'>");
-        var col3 = $("<td id='next-arrival'>");
-        var col4 = $("<td id='minutes-away'>");
-
-        rowHeader.text(sv.name);
-        col1.text(sv.destination);
-        col2.text(sv.frequency);
-        col3.text(nextArrival);
-        col4.text(minutesAway);
-
-        row.append(col1);
-        row.append(col2);
-        row.append(col3);
-        row.append(col4);
-
-        $("#displayResults").append(row);
-
-    }, function (errorObject) {
-        
-    });
+    $("#schedule-table > tbody").append("<tr><td>" + trainName + "</td><td>" + destination + "</td><td>" + frequency + "</td><td>" + formatTime + "</td><td>" + minutesTillTrain + "</td></tr>");
 
 });
+
+
 
